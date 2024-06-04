@@ -73,9 +73,8 @@ class ApixContainer {
                 Class<?> componentClass = iterator.next();
                 if (isComponentReadyForInstantiation(componentClass)) {
                     Object objectInstance = componentClass.newInstance();
-                    fillComponentFieldsMarkedWithValue(objectInstance);
-                    runAllConfigurationBeanCreation(objectInstance);
                     instantiateAllAutowiredFields(objectInstance);
+                    runAllConfigurationBeanCreation(objectInstance);
                     components.put(componentClass, objectInstance);
                     iterator.remove();
                     isCyclicDependency = false;
@@ -103,6 +102,7 @@ class ApixContainer {
         }
         for (Field field : autowiredFields) {
             if (getComponent(field.getType()) == null) {
+                System.out.println(componentClass+" not ready because "+field.getType()+" not ready");
                 return false;
             }
         }
@@ -243,7 +243,7 @@ class ApixContainer {
             return component;
         } else {
             for (Class<?> storedComponentClass : components.keySet()) {
-                if (componentClass.equals(storedComponentClass)) {
+                if (componentClass.equals(storedComponentClass) || componentClass.isAssignableFrom(storedComponentClass)) {
                     return components.get(storedComponentClass);
                 }
             }
