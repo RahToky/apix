@@ -168,7 +168,6 @@ public class Apix {
             if (compressionSupported == null)
                 compressionSupported = DefaultVertxConfig.COMPRESSION_SUPPORTED;
         }
-        httpServerOptions.setSsl(true);
         httpServerOptions.setCompressionSupported(compressionSupported);
         httpServerOptions.setIdleTimeout(idleTimeout);
         return httpServerOptions;
@@ -187,6 +186,7 @@ public class Apix {
                         onSuccessHandler.handle(server);
                 })
                 .onFailure(throwable -> {
+                    httpServer.close();
                     ConsoleLog.error(new Throwable("Can't start server on port " + port, throwable));
                     if (onFailureHandler != null)
                         onFailureHandler.handle(throwable);
