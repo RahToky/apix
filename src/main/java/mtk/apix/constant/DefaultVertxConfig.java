@@ -1,6 +1,8 @@
 package mtk.apix.constant;
 
 /**
+ * Useful to specify vertx configuration
+ *
  * @author mahatoky rasolonirina
  */
 public final class DefaultVertxConfig {

@@ -14,6 +14,11 @@ import java.lang.reflect.Method;
 import java.util.*;
 
 /**
+ * Class which manages and contains all class components.
+ * - Component creation
+ * - Dependency injection
+ * - {@link Value} injection
+ *
  * @author mahatoky rasolonirina
  */
 @SuppressWarnings("unchecked")
@@ -24,7 +29,6 @@ class ApixContainer {
     public static Class<? extends Annotation>[] componentsAnnotations;
     public static Class<? extends Annotation>[] controllerAnnotations;
     public static Class<? extends Annotation>[] httpMethodAnnotation;
-
 
     static {
         componentsAnnotations = new Class[]{RestController.class, Service.class, Repository.class, Component.class, RestControllerAdvice.class, Interceptor.class, Configuration.class};
@@ -61,7 +65,7 @@ class ApixContainer {
      */
     private void initAllComponents(Class<?> mainClass, String basePackage) throws InstantiationException, IllegalAccessException {
         Set<Class<?>> componentsClasses = ClassUtil.getAnnotatedClass(mainClass, basePackage, ApixContainer.componentsAnnotations);
-        if(componentsClasses.isEmpty())
+        if (componentsClasses.isEmpty())
             return;
         Set<Class<?>> tempComponentsClasses = new HashSet<>(componentsClasses);
         boolean isCyclicDependency;
@@ -96,13 +100,13 @@ class ApixContainer {
      * @return
      */
     private boolean isComponentReadyForInstantiation(Class<?> componentClass) {
-        List<Field> autowiredFields = ClassUtil.getCurrentAndInheritedAnnotatedFields(componentClass, Autowired.class);
+        List<Field> autowiredFields = ClassUtil.getOwnAndInheritedAnnotatedFields(componentClass, Autowired.class);
         if (autowiredFields.isEmpty()) {
             return true;
         }
         for (Field field : autowiredFields) {
             if (getComponent(field.getType()) == null) {
-                System.out.println(componentClass+" not ready because "+field.getType()+" not ready");
+                System.out.println(componentClass + " not ready because " + field.getType() + " not ready");
                 return false;
             }
         }
@@ -117,7 +121,7 @@ class ApixContainer {
      * @param component
      */
     private void instantiateAllAutowiredFields(Object component) {
-        List<Field> objectFields = ClassUtil.getCurrentAndInheritedAnnotatedFields(component.getClass(), Autowired.class);
+        List<Field> objectFields = ClassUtil.getOwnAndInheritedAnnotatedFields(component.getClass(), Autowired.class);
         for (Field field : objectFields) {
             Object autowiredComponentField = getComponent(field.getType());
             if (autowiredComponentField != null) {
@@ -148,7 +152,7 @@ class ApixContainer {
      * @param component
      */
     private void invokePostConstructMethods(Object component) {
-        List<Method> postConstructMethods = ClassUtil.getCurrentAndInheritedAnnotatedMethods(component.getClass(), PostConstruct.class);
+        List<Method> postConstructMethods = ClassUtil.getOwnAndInheritedAnnotatedMethods(component.getClass(), PostConstruct.class);
         for (Method method : postConstructMethods) {
             try {
                 method.setAccessible(true);
@@ -169,7 +173,7 @@ class ApixContainer {
 
     private void fillComponentFieldsMarkedWithValue(Object component) {
         Class<?> aClass = component.getClass();
-        List<Field> fields = ClassUtil.getCurrentAndInheritedFields(aClass);
+        List<Field> fields = ClassUtil.getOwnAndInheritedFields(aClass);
         for (Field field : fields) {
             Class<?> fieldType = field.getType();
             if (field.isAnnotationPresent(Value.class) && (field.getType().isPrimitive() || String.class.isAssignableFrom(fieldType) || Boolean.class.isAssignableFrom(fieldType) || Number.class.isAssignableFrom(fieldType))) {
@@ -191,7 +195,7 @@ class ApixContainer {
     public List<Object> getRestControllers() {
         List<Object> controllers = new ArrayList<>();
         components.forEach((aClass, o) -> {
-            if (ClassUtil.isClassAnnotatedWith(aClass, new Class[]{RestController.class})) {
+            if (ClassUtil.isClassAnnotatedWithAny(aClass, new Class[]{RestController.class})) {
                 controllers.add(o);
             }
         });
@@ -201,7 +205,7 @@ class ApixContainer {
     public List<Object> getControllersAdvice() {
         List<Object> controllers = new ArrayList<>();
         components.forEach((aClass, o) -> {
-            if (ClassUtil.isClassAnnotatedWith(aClass, new Class[]{RestControllerAdvice.class})) {
+            if (ClassUtil.isClassAnnotatedWithAny(aClass, new Class[]{RestControllerAdvice.class})) {
                 controllers.add(o);
             }
         });
@@ -219,7 +223,7 @@ class ApixContainer {
 
     private void runAllConfigurationBeanCreation(Object configuration) {
         if (configuration.getClass().isAnnotationPresent(Configuration.class)) {
-            List<Method> methods = ClassUtil.getCurrentAndInheritedAnnotatedMethods(configuration.getClass(), Bean.class);
+            List<Method> methods = ClassUtil.getOwnAndInheritedAnnotatedMethods(configuration.getClass(), Bean.class);
             for (Method method : methods) {
                 if (method.getReturnType() != void.class) {
                     Object bean = ClassUtil.invokeMethod(configuration, method, Collections.singletonList(components.values()));
@@ -272,7 +276,7 @@ class ApixContainer {
         }
     }
 
-    public void addComponent(Class<?> aClass, Object component){
+    public void addComponent(Class<?> aClass, Object component) {
         components.put(aClass, component);
     }
 }

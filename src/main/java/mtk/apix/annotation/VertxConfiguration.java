@@ -8,6 +8,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * To put on the main class of the application if you want to specify some configurations related to vertex
+ *
  * @author mahatoky rasolonirina
  */
 @Retention(RetentionPolicy.RUNTIME)

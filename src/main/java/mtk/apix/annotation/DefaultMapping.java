@@ -9,6 +9,7 @@ import java.lang.annotation.Target;
 
 /**
  * Method annotated with this annotation will be used as default mapping for every non-existent endpoint
+ *
  * @author mahatoky rasolonirina
  */
 @Retention(RetentionPolicy.RUNTIME)

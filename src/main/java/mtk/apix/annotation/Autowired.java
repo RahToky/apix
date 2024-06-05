@@ -6,6 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * For dependency injection
+ * Put on class properties to use DI
+ *
  * @author mahatoky rasolonirina
  */
 @Retention(RetentionPolicy.RUNTIME)

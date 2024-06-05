@@ -6,6 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * To put on a method whose response object must be considered as a component.
+ * The class must be annotated with {@link Configuration}
+ *
  * @author mahatoky rasolonirina
  */
 @Retention(RetentionPolicy.RUNTIME)

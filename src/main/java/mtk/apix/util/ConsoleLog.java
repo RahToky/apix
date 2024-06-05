@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
+ * System print
  * @author mahatoky rasolonirina
  */
 public class ConsoleLog {

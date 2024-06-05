@@ -24,6 +24,8 @@ import java.util.stream.Collectors;
 
 /**
  * Based on vertx-web 4.5.7
+ * Main class that the user should consider.
+ * The application is started using the static run method
  *
  * @author mahatoky rasolonirina
  */
@@ -228,7 +230,7 @@ public class Apix {
             Method[] apiMethods = controller.getClass().getDeclaredMethods();
             String endpointPrefix = controller.getClass().getAnnotation(RestController.class).prefix();
             for (Method method : apiMethods) {
-                if (ClassUtil.isMethodAnnotatedWith(method, ApixContainer.httpMethodAnnotation)) {
+                if (ClassUtil.isMethodAnnotatedWithAny(method, ApixContainer.httpMethodAnnotation)) {
                     Parameter[] parameters = method.getParameters();
                     if (parameters.length > 0 && ClassUtil.contains(parameters, RoutingContext.class)) {
                         if (method.isAnnotationPresent(PostMapping.class)) {
@@ -293,7 +295,7 @@ public class Apix {
         for (Object controller : apixContainer.getRestControllers()) {
             Method[] methods = controller.getClass().getDeclaredMethods();
             for (Method method : methods) {
-                if (ClassUtil.isMethodAnnotatedWith(method, DefaultMapping.class)) {
+                if (ClassUtil.isMethodAnnotatedWithAny(method, DefaultMapping.class)) {
                     Parameter[] parameters = method.getParameters();
                     if (parameters.length > 0 && ClassUtil.contains(parameters, RoutingContext.class)) {
                         router.route().produces(method.getAnnotation(DefaultMapping.class).produce())
@@ -328,7 +330,7 @@ public class Apix {
                         Method[] methods = controller.getClass().getDeclaredMethods();
                         Method globalExceptionMetod = null;
                         for (Method method : methods) {
-                            if (ClassUtil.isMethodAnnotatedWith(method, ExceptionHandler.class)) {
+                            if (ClassUtil.isMethodAnnotatedWithAny(method, ExceptionHandler.class)) {
                                 if (RuntimeException.class.equals(method.getAnnotation(ExceptionHandler.class).value())) {
                                     globalExceptionMetod = method;
                                 }

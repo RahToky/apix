@@ -18,16 +18,14 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import java.util.jar.JarInputStream;
 import java.util.stream.Collectors;
 
-import static io.vertx.ext.web.impl.Utils.getClassLoader;
-
 /**
+ * Utility class to help all operation about class
+ *
  * @author mahatoky rasolonirina
  */
 @SuppressWarnings("unchecked")
@@ -35,6 +33,15 @@ public final class ClassUtil {
     private ClassUtil() {
     }
 
+    /**
+     * Only for packaged application (JAR)
+     * Find all classes annotate width the given annotation list
+     *
+     * @param mainClass   main class of application
+     * @param packageName package to scan
+     * @param annotations list of annotation
+     * @return set of all class annotate with given list of annotation
+     */
     public static Set<Class<?>> getJarAnnotatedClass(Class<?> mainClass, String packageName, Class<? extends Annotation>[] annotations) {
         Set<Class<?>> classes = new HashSet<>();
         try {
@@ -68,6 +75,15 @@ public final class ClassUtil {
     }
 
 
+    /**
+     * For non packaged application
+     * Find all classes annotate width the given annotation list
+     *
+     * @param mainClass   main class of application
+     * @param packageName package to scan
+     * @param annotations list of annotation
+     * @return all class annotate with given list of annotation
+     */
     public static Set<Class<?>> getAnnotatedClass(Class<?> mainClass, String packageName, Class<? extends Annotation>[] annotations) {
         String classpath = System.getProperty("java.class.path");
         if (!classpath.contains(";") && classpath.endsWith(".jar")) {
@@ -108,7 +124,14 @@ public final class ClassUtil {
         return classes;
     }
 
-    public static boolean isClassAnnotatedWith(Class<?> aClass, Class<? extends Annotation>[] annotations) {
+    /**
+     * Test if class is annotated with any of given annotation list
+     *
+     * @param aClass      class to check
+     * @param annotations list of annotation
+     * @return result of check
+     */
+    public static boolean isClassAnnotatedWithAny(Class<?> aClass, Class<? extends Annotation>[] annotations) {
         for (Class<? extends Annotation> annotation : annotations) {
             if (aClass.isAnnotationPresent(annotation)) {
                 return true;
@@ -117,8 +140,15 @@ public final class ClassUtil {
         return false;
     }
 
+    /**
+     * Test if given method is annotated with any of given annotation list
+     *
+     * @param method      method to check
+     * @param annotations list of annotation
+     * @return result of check
+     */
     @SafeVarargs
-    public static boolean isMethodAnnotatedWith(Method method, Class<? extends Annotation>... annotations) {
+    public static boolean isMethodAnnotatedWithAny(Method method, Class<? extends Annotation>... annotations) {
         for (Class<? extends Annotation> annotation : annotations) {
             if (method.isAnnotationPresent(annotation)) {
                 return true;
@@ -127,6 +157,13 @@ public final class ClassUtil {
         return false;
     }
 
+    /**
+     * Test if one of the given parameters contains one which assignable from the given class
+     *
+     * @param parameters all parameters to check
+     * @param aClass     a class to find
+     * @return true or false according to the result of check
+     */
     public static boolean contains(Parameter[] parameters, Class<?> aClass) {
         for (Parameter p : parameters) {
             if (RoutingContext.class.isAssignableFrom((Class<?>) p.getParameterizedType())) {
@@ -140,7 +177,16 @@ public final class ClassUtil {
         return valueOf(str, toClass, null);
     }
 
-    public static <T> T valueOf(String str, Class<T> toClass, T defaultValueIfNull) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    /**
+     * Convert given string to an over objet according to given class
+     *
+     * @param str                initial string value to convert
+     * @param toClass            class of the target output value
+     * @param defaultValueIfNull
+     * @param <T>                type of output class
+     * @return converted value of given string
+     */
+    public static <T> T valueOf(String str, Class<T> toClass, T defaultValueIfNull) {
         if (String.class.isAssignableFrom(toClass)) {
             return (T) str;
         }
@@ -181,7 +227,14 @@ public final class ClassUtil {
         }
     }
 
-    public static List<Method> getCurrentAndInheritedAnnotatedMethods(Class<?> aClass, Class<? extends Annotation> annotation) {
+    /**
+     * Take the given class annotate methods and all inherited annotate methods
+     *
+     * @param aClass
+     * @param annotation
+     * @return list of all methods marked with the given annotation
+     */
+    public static List<Method> getOwnAndInheritedAnnotatedMethods(Class<?> aClass, Class<? extends Annotation> annotation) {
         Method[] declaredMethods = aClass.getDeclaredMethods();
         List<Method> allMethods = Arrays.stream(declaredMethods).filter(method -> method.isAnnotationPresent(annotation)).collect(Collectors.toList());
 
@@ -195,7 +248,13 @@ public final class ClassUtil {
         return allMethods;
     }
 
-    public static List<Field> getCurrentAndInheritedFields(Class<?> aClass) {
+    /**
+     * take all methods marked with the given annotation
+     *
+     * @param aClass
+     * @return list of all fields
+     */
+    public static List<Field> getOwnAndInheritedFields(Class<?> aClass) {
         Field[] declaredFields = aClass.getDeclaredFields();
         List<Field> allFields = new ArrayList<>(Arrays.asList(declaredFields));
 
@@ -209,7 +268,14 @@ public final class ClassUtil {
         return allFields;
     }
 
-    public static List<Field> getCurrentAndInheritedAnnotatedFields(Class<?> aClass, Class<? extends Annotation> annotation) {
+    /**
+     * Take the given class annotate fields and all inherited annotate fields
+     *
+     * @param aClass
+     * @param annotation
+     * @return list of all fields annotate with given annotation
+     */
+    public static List<Field> getOwnAndInheritedAnnotatedFields(Class<?> aClass, Class<? extends Annotation> annotation) {
         List<Field> allFields = new ArrayList<>();
 
         Field[] declaredFields = aClass.getDeclaredFields();
@@ -225,6 +291,15 @@ public final class ClassUtil {
         return allFields;
     }
 
+    /**
+     * Specific invocation due to given list of object (dependencies) as parameters
+     * The method will be invoked, and if one of the parameters is available in the list of dependencies then we use it, otherwise we set it to null
+     *
+     * @param instance     instance of the objet
+     * @param method       target method
+     * @param dependencies list of objects that can be used as parameters of the method to invoke
+     * @return result of invocation
+     */
     public static Object invokeMethod(Object instance, Method method, List<Object> dependencies) {
         try {
             Parameter[] parameters = method.getParameters();
@@ -238,6 +313,15 @@ public final class ClassUtil {
         }
     }
 
+    /**
+     * A method can be invoked if and only if it has at least one parameter of type RoutingContext
+     * The method will be invoked, and if one of the parameters is available in the list of dependencies then we use it, otherwise we set it to null
+     *
+     * @param instance       instance of the objet
+     * @param method         target method
+     * @param routingContext vertx RoutingContext
+     * @param dependencies   list of objects that can be used as parameters of the method to invoke
+     */
     public static void invokeHttpMethod(Object instance, Method method, RoutingContext routingContext, List<Object> dependencies) {
         try {
             Parameter[] parameters = method.getParameters();
@@ -276,6 +360,13 @@ public final class ClassUtil {
         }
     }
 
+    /**
+     * Find in the list of given instance an instance which class is assignable from given class
+     *
+     * @param aClass    class of the instance to find
+     * @param instances list of instance
+     * @return the instance
+     */
     public static Object findInstance(Class<?> aClass, Object... instances) {
         for (Object instance : instances) {
             if (aClass.isAssignableFrom(instances.getClass())) {
@@ -285,12 +376,15 @@ public final class ClassUtil {
         return null;
     }
 
-    public static String getCurrProjectPath(Class<?> mainProjectClass) throws URISyntaxException {
+    /**
+     * Find the current application path.
+     * If the application is packaged in JAR then it returns the folder of its location otherwise we consider the application as being the main folder to return
+     * @param mainProjectClass main application class
+     * @return the path
+     * @throws URISyntaxException
+     */
+    public static String getCurrApplicationPath(Class<?> mainProjectClass) throws URISyntaxException {
         String jarPath = mainProjectClass.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
         return jarPath.endsWith(".jar") ? new File(jarPath).getParent() : new File(jarPath).getPath();
-    }
-
-    public static boolean isJar(Class<?> mainClass) throws URISyntaxException {
-        return mainClass.getProtectionDomain().getCodeSource().getLocation().toURI().getPath().endsWith(".jar");
     }
 }

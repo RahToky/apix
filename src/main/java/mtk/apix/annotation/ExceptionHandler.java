@@ -8,6 +8,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * To put on a method of a class which is annotated with RestControllerAdvice.
+ * The method must have at least one parameter of type RoutingContext of vertX
+ *
  * @author mahatoky rasolonirina
  */
 @Retention(RetentionPolicy.RUNTIME)

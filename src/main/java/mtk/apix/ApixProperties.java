@@ -5,18 +5,16 @@ import mtk.apix.util.ConsoleLog;
 import mtk.apix.util.Environment;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
 /**
+ * Class which manages the application.properties file depending on the application launch environment
  * @author mahatoky rasolonirina
  */
 class ApixProperties {
@@ -44,7 +42,7 @@ class ApixProperties {
             Path path = null;
             if (configDir != null && !configDir.trim().isEmpty() && !"/".equals(configDir.trim()) && !"./".equals(configDir.trim())) {
                 URI filename = new URI(configDir).normalize().resolve(APP_PROPS_FILENAMES.get(environment));
-                path = Paths.get(filename.isAbsolute() ? filename : new URI(ClassUtil.getCurrProjectPath(mainClass)).resolve(filename));
+                path = Paths.get(filename.isAbsolute() ? filename : new URI(ClassUtil.getCurrApplicationPath(mainClass)).resolve(filename));
                 if (Files.exists(path)) {
                     try (InputStream input2 = Files.newInputStream(path)) {
                         applicationProperties.load(input2);

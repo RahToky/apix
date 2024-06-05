@@ -1,6 +1,7 @@
 package mtk.apix.constant;
 
 /**
+ * Application-specific keys for the application.properties file
  * @author mahatoky rasolonirina
  */
 public final class PropertyKeys {

@@ -6,7 +6,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * It is a semantic to mark that it is a repository but behind it will be treated normally as a simple component without any additional processing
+ *
  * @author mahatoky rasolonirina
+ * @see Component
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)

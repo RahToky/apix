@@ -8,6 +8,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * To put on a method which will manage http PUT request
  * @author mahatoky rasolonirina
  */
 @Retention(RetentionPolicy.RUNTIME)
