@@ -123,101 +123,36 @@ public class Apix {
         }
     }
 
-    public Apix setMainClass(Class<?> mainClass) {
-        this.mainClass = mainClass;
-        return this;
-    }
-
-    public Apix setArgs(String[] args) {
-        this.args = args;
-        List<String> argsList = Arrays.asList(args);
-        if (argsList.contains("--local")) {
-            this.env = Environment.LOCAL;
-        } else if (argsList.contains("--dev")) {
-            this.env = Environment.DEV;
-        } else if (argsList.contains("--prod")) {
-            this.env = Environment.PROD;
-        }
-        return this;
-    }
-
     /**
-     * Get vertxOptions value by annotation
-     * Else return new default vertxOptions instance
-     *
-     * @return
+     * Use {@link VertxOptions} annotation values by priority
      */
-    public VertxOptions getAnnotationVertxOptions() {
-        VertxOptions vertxOptionsAnnotation = new VertxOptions();
-        if (mainClass.isAnnotationPresent(ApixVertxOptions.class)) {
-            ApixVertxOptions apixVertxOptions = mainClass.getAnnotation(ApixVertxOptions.class);
-            vertxOptionsAnnotation = new VertxOptions();
-            vertxOptionsAnnotation.setEventLoopPoolSize(apixVertxOptions.eventLoopPoolSize());
-            vertxOptionsAnnotation.setDisableTCCL(apixVertxOptions.disableTCCL());
-            vertxOptionsAnnotation.setBlockedThreadCheckInterval(apixVertxOptions.blockedThreadCheckInterval());
-            vertxOptionsAnnotation.setWorkerPoolSize(apixVertxOptions.workerPoolSize());
-            vertxOptionsAnnotation.setInternalBlockingPoolSize(apixVertxOptions.internalBlockingPoolSize());
-            vertxOptionsAnnotation.setMaxEventLoopExecuteTime(apixVertxOptions.maxEventLoopExecuteTime());
-            vertxOptionsAnnotation.setMaxWorkerExecuteTime(apixVertxOptions.maxWorkerExecuteTime());
-            vertxOptionsAnnotation.setWarningExceptionTime(apixVertxOptions.warningExceptionTime());
-            vertxOptionsAnnotation.setHAGroup(apixVertxOptions.haGroup());
-            vertxOptionsAnnotation.setHAEnabled(apixVertxOptions.haEnable());
-            vertxOptionsAnnotation.setUseDaemonThread(apixVertxOptions.useDaemonThread());
-            vertxOptionsAnnotation.setPreferNativeTransport(apixVertxOptions.preferNativeTransport());
-        }
-        return vertxOptionsAnnotation;
-    }
-
     private void initVertx() {
         try {
             if (vertxOptions == null) {
-                vertxOptions = getAnnotationVertxOptions();
+                vertxOptions = new VertxOptions();
+            }
+
+            if (mainClass.isAnnotationPresent(ApixVertxOptions.class)) {
+                ApixVertxOptions apixVertxOptions = mainClass.getAnnotation(ApixVertxOptions.class);
+                vertxOptions = new VertxOptions();
+                vertxOptions.setEventLoopPoolSize(apixVertxOptions.eventLoopPoolSize());
+                vertxOptions.setDisableTCCL(apixVertxOptions.disableTCCL());
+                vertxOptions.setBlockedThreadCheckInterval(apixVertxOptions.blockedThreadCheckInterval());
+                vertxOptions.setWorkerPoolSize(apixVertxOptions.workerPoolSize());
+                vertxOptions.setInternalBlockingPoolSize(apixVertxOptions.internalBlockingPoolSize());
+                vertxOptions.setMaxEventLoopExecuteTime(apixVertxOptions.maxEventLoopExecuteTime());
+                vertxOptions.setMaxWorkerExecuteTime(apixVertxOptions.maxWorkerExecuteTime());
+                vertxOptions.setWarningExceptionTime(apixVertxOptions.warningExceptionTime());
+                vertxOptions.setHAGroup(apixVertxOptions.haGroup());
+                vertxOptions.setHAEnabled(apixVertxOptions.haEnable());
+                vertxOptions.setUseDaemonThread(apixVertxOptions.useDaemonThread());
+                vertxOptions.setPreferNativeTransport(apixVertxOptions.preferNativeTransport());
             }
         } catch (Exception e) {
             ConsoleLog.error(e);
         } finally {
             vertx = Vertx.vertx(vertxOptions);
         }
-    }
-
-    /**
-     * Return {@link HttpServerOptions} if main class is annotate with
-     * Else return null object
-     *
-     * @return
-     */
-    public HttpServerOptions getAnnotationHttpServerOptions() {
-        if (mainClass.isAnnotationPresent(ApixHttpServerOptions.class)) {
-            HttpServerOptions httpServerOptionsAnnotation = new HttpServerOptions();
-            ApixHttpServerOptions apixHttpServerOptions = mainClass.getAnnotation(ApixHttpServerOptions.class);
-            httpServerOptionsAnnotation.setPort(apixHttpServerOptions.port());
-            httpServerOptionsAnnotation.setSsl(apixHttpServerOptions.ssl());
-            httpServerOptionsAnnotation.setCompressionSupported(apixHttpServerOptions.compressionSupported());
-            httpServerOptionsAnnotation.setCompressionLevel(apixHttpServerOptions.compressionLevel());
-            httpServerOptionsAnnotation.setMaxWebSocketFrameSize(apixHttpServerOptions.maxWebsocketFrameSize());
-            httpServerOptionsAnnotation.setMaxWebSocketMessageSize(apixHttpServerOptions.maxWebSocketMessageSize());
-            httpServerOptionsAnnotation.setMaxChunkSize(apixHttpServerOptions.maxChunkSize());
-            httpServerOptionsAnnotation.setMaxFormAttributeSize(apixHttpServerOptions.maxFormAttributeSize());
-            httpServerOptionsAnnotation.setMaxFormFields(apixHttpServerOptions.maxFormFields());
-            httpServerOptionsAnnotation.setMaxFormBufferedBytes(apixHttpServerOptions.maxFormBufferedBytes());
-            httpServerOptionsAnnotation.setHttp2ClearTextEnabled(apixHttpServerOptions.http2ClearTextEnabled());
-            httpServerOptionsAnnotation.setHttp2ConnectionWindowSize(apixHttpServerOptions.http2ConnectionWindowSize());
-            httpServerOptionsAnnotation.setDecompressionSupported(apixHttpServerOptions.decompressionSupported());
-            httpServerOptionsAnnotation.setAcceptUnmaskedFrames(apixHttpServerOptions.acceptUnmaskedFrames());
-            httpServerOptionsAnnotation.setDecoderInitialBufferSize(apixHttpServerOptions.decoderInitialBufferSize());
-            httpServerOptionsAnnotation.setPerFrameWebSocketCompressionSupported(apixHttpServerOptions.perFrameWebSocketCompressionSupported());
-            httpServerOptionsAnnotation.setPerMessageWebSocketCompressionSupported(apixHttpServerOptions.perMessageWebSocketCompressionSupported());
-            httpServerOptionsAnnotation.setWebSocketPreferredClientNoContext(apixHttpServerOptions.webSocketPreferredClientNoContext());
-            httpServerOptionsAnnotation.setWebSocketAllowServerNoContext(apixHttpServerOptions.webSocketAllowServerNoContext());
-            httpServerOptionsAnnotation.setRegisterWebSocketWriteHandlers(apixHttpServerOptions.registerWebSocketWriteHandlers());
-            httpServerOptionsAnnotation.setCompressionLevel(apixHttpServerOptions.compressionLevel());
-            httpServerOptionsAnnotation.setWebSocketClosingTimeout(apixHttpServerOptions.webSocketClosingTimeout());
-            httpServerOptionsAnnotation.setHttp2RstFloodMaxRstFramePerWindow(apixHttpServerOptions.http2RstFloodMaxRstFramePerWindow());
-            httpServerOptionsAnnotation.setHttp2RstFloodWindowDuration(apixHttpServerOptions.http2RstFloodWindowDuration());
-            httpServerOptionsAnnotation.setWebSocketCompressionLevel(apixHttpServerOptions.webSocketCompressionLevel());
-            return httpServerOptionsAnnotation;
-        }
-        return null;
     }
 
     private void startServer(Router router, Handler<HttpServer> onStart) {
@@ -460,6 +395,24 @@ public class Apix {
 
     public static Properties getProperties() {
         return getInstance().apixProperties.getApplicationProperties();
+    }
+
+    public Apix setMainClass(Class<?> mainClass) {
+        this.mainClass = mainClass;
+        return this;
+    }
+
+    public Apix setArgs(String[] args) {
+        this.args = args;
+        List<String> argsList = Arrays.asList(args);
+        if (argsList.contains("--local")) {
+            this.env = Environment.LOCAL;
+        } else if (argsList.contains("--dev")) {
+            this.env = Environment.DEV;
+        } else if (argsList.contains("--prod")) {
+            this.env = Environment.PROD;
+        }
+        return this;
     }
 
     public HttpServerOptions getHttpServerOptions() {

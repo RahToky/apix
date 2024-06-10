@@ -104,6 +104,11 @@ class ApixContainer {
         return true;
     }
 
+    /**
+     * Search for the field annotated with {@link Autowired} whose instance is not present in components
+     * @param componentClass
+     * @return
+     */
     private Class<?> getUnsatisfiedAutowired(Class<?> componentClass){
         List<Field> autowiredFields = ClassUtil.getCurrentAndInheritedAnnotatedFields(componentClass, Autowired.class);
         for (Field field : autowiredFields) {
