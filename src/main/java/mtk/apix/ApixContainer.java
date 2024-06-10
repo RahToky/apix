@@ -79,11 +79,14 @@ class ApixContainer {
                     components.put(componentClass, objectInstance);
                     iterator.remove();
                     isCyclicDependency = false;
+                    System.out.println("--> Ready: " + componentClass);
+                } else {
+                    System.out.println("--> not ready: " + componentClass);
                 }
             }
 
-            if (isCyclicDependency) {
-                componentsClasses.forEach(aClass -> System.out.println("component=" + aClass));
+            if (isCyclicDependency && !tempComponentsClasses.isEmpty()) {
+                componentsClasses.forEach(aClass -> System.out.println("component=" + aClass + ", instance is " + (components.get(aClass))));
                 throw new DependencyException("Bean or component not found or cyclic dependency. Please annotate your class as component or annotate your method with @Bean to consider the result as a component");
             }
         }
@@ -104,6 +107,10 @@ class ApixContainer {
         }
         for (Field field : autowiredFields) {
             if (getComponent(field.getType()) == null) {
+                System.out.println(componentClass + " NOT READY cause " + field.getType() + " not in components");
+                components.forEach((aClass, o) -> {
+                    System.out.println("-componentClass=" + aClass + ", instance=" + (components.get(aClass)));
+                });
                 return false;
             }
         }
