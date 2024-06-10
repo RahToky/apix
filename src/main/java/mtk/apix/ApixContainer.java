@@ -251,7 +251,7 @@ class ApixContainer {
             return component;
         } else {
             for (Class<?> storedComponentClass : components.keySet()) {
-                if (componentClass.equals(storedComponentClass)) {
+                if (componentClass.isAssignableFrom(storedComponentClass)) {
                     return components.get(storedComponentClass);
                 }
             }
