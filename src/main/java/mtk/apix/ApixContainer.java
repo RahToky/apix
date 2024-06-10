@@ -61,7 +61,7 @@ class ApixContainer {
      */
     private void initAllComponents(Class<?> mainClass, String basePackage) throws InstantiationException, IllegalAccessException {
         Set<Class<?>> componentsClasses = ClassUtil.getAnnotatedClass(mainClass, basePackage, ApixContainer.componentsAnnotations);
-        if(componentsClasses.isEmpty())
+        if (componentsClasses.isEmpty())
             return;
         Set<Class<?>> tempComponentsClasses = new HashSet<>(componentsClasses);
         boolean isCyclicDependency;
@@ -83,6 +83,7 @@ class ApixContainer {
             }
 
             if (isCyclicDependency) {
+                componentsClasses.forEach(aClass -> System.out.println("component=" + aClass));
                 throw new DependencyException("Bean or component not found or cyclic dependency. Please annotate your class as component or annotate your method with @Bean to consider the result as a component");
             }
         }
@@ -272,7 +273,7 @@ class ApixContainer {
         }
     }
 
-    public void addComponent(Class<?> aClass, Object component){
+    public void addComponent(Class<?> aClass, Object component) {
         components.put(aClass, component);
     }
 }

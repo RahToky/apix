@@ -1,11 +1,18 @@
 package mtk.apix.annotation;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
 /**
  * All of these defaults are the real defaults of VertxOptions
  *
  * @author mahatoky rasolonirina
  */
-public @interface VertxOptions {
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface ApixVertxOptions {
     int eventLoopPoolSize() default 2;
 
     int workerPoolSize() default 20;
@@ -21,8 +28,12 @@ public @interface VertxOptions {
     long blockedThreadCheckInterval() default 1_000_000_000L;
 
     String haGroup() default "__DEFAULT__";
+    boolean haEnable() default false;
 
-    String clusterHost() default "";
+    boolean disableTCCL() default false;
 
-    int clusterPort() default 0;
+    boolean useDaemonThread() default false;
+
+    boolean preferNativeTransport() default false;
+
 }

@@ -10,7 +10,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import mtk.apix.annotation.*;
-import mtk.apix.constant.DefaultVertxConfig;
+import mtk.apix.constant.ApixDefaultConfiguration;
 import mtk.apix.constant.PropertyKeys;
 import mtk.apix.exception.DependencyException;
 import mtk.apix.util.ClassUtil;
@@ -38,10 +38,11 @@ public class Apix {
     private Environment env;
     private Class<?> mainClass;
     private Vertx vertx;
+    private VertxOptions vertxOptions;
+    private HttpServerOptions httpServerOptions;
     private int port;
 
     private Apix() {
-        port = DefaultVertxConfig.PORT;
         env = Environment.DEFAULT;
         apixContainer = new ApixContainer();
         apixProperties = new ApixProperties();
@@ -66,7 +67,7 @@ public class Apix {
      * @param args
      */
     public static void run(Class<?> mainClass, String[] args) {
-        run(mainClass, args, null, null);
+        getInstance().runApp(mainClass, args);
     }
 
     /**
@@ -83,112 +84,133 @@ public class Apix {
      * @param onFailureHandler to handle failure (optional)
      */
     public static void run(Class<?> mainClass, String[] args, Handler<HttpServer> onSuccessHandler, Handler<Throwable> onFailureHandler) {
+        Apix apix = getInstance();
+        apix.onSuccessHandler(onSuccessHandler);
+        apix.onFailureHandler(onFailureHandler);
+        apix.runApp(mainClass, args);
+    }
+
+    public void runApp(Class<?> mainClass, String[] args) {
         try {
             if (!mainClass.isAnnotationPresent(ApixApplication.class)) {
                 throw new RuntimeException("Main class must annotate with @ApixApplication");
             }
-
-            Apix apix = Apix.getInstance();
-            apix.onSuccessHandler = onSuccessHandler;
-            apix.onFailureHandler = onFailureHandler;
-            apix.mainClass = mainClass;
-
+            this.mainClass = mainClass;
             List<String> argsList = Arrays.asList(args);
             if (argsList.contains("--local")) {
-                apix.env = Environment.LOCAL;
+                this.env = Environment.LOCAL;
             } else if (argsList.contains("--dev")) {
-                apix.env = Environment.DEV;
+                this.env = Environment.DEV;
             } else if (argsList.contains("--prod")) {
-                apix.env = Environment.PROD;
+                this.env = Environment.PROD;
             }
 
-            apix.displayApixLogo();
-            apix.apixProperties.init(mainClass, apix.env);
-            apix.initVertx();
-            apix.showLog(apix.apixProperties.getApplicationProperties());
-            apix.apixContainer.addComponent(apix.vertx.getClass(), apix.vertx);
-            apix.apixContainer.init(mainClass, apix.apixProperties.getApplicationProperties(), apix.env);
+            this.displayApixLogo();
+            this.apixProperties.init(mainClass, this.env);
+            this.initVertx();
+            this.showLog(this.apixProperties.getApplicationProperties());
+            this.apixContainer.addComponent(this.vertx.getClass(), this.vertx);
+            this.apixContainer.init(mainClass, this.apixProperties.getApplicationProperties(), this.env);
 
-            if (!apix.apixContainer.getRestControllers().isEmpty()) {
-                Router router = Router.router(apix.vertx);
+            System.out.println("--------> controllersSize=" + apixContainer.getRestControllers().size());
+            if (!this.apixContainer.getRestControllers().isEmpty()) {
+                Router router = Router.router(this.vertx);
                 router.route().handler(BodyHandler.create());
-                apix.fixPort(apix.apixProperties.getApplicationProperties());
-                apix.createInterceptor(router);
-                apix.createEndpoints(router);
-                apix.createDefaultEndpoint(router);
-                apix.createControllerAdvice(router);
-                apix.startServer(router, httpServer -> apix.apixContainer.invokeAllPostConstructComponentsMethod());
+                this.fixPort(this.apixProperties.getApplicationProperties());
+                this.createInterceptor(router);
+                this.createEndpoints(router);
+                this.createDefaultEndpoint(router);
+                this.createControllerAdvice(router);
+                this.startServer(router, httpServer -> this.apixContainer.invokeAllPostConstructComponentsMethod());
             } else {
                 ConsoleLog.warn("Server not started: no controller found!");
             }
         } catch (Exception e) {
-            throw new DependencyException(e);
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
     private void initVertx() {
-
-
-        VertxOptions vertxOptions = new VertxOptions();
-
-        Integer eventLoopPoolSize = DefaultVertxConfig.EVENT_POOL_SIZE;
-
         try {
-            if (mainClass != null && mainClass.isAnnotationPresent(VertxConfiguration.class)) {
-                eventLoopPoolSize = mainClass.getAnnotation(VertxConfiguration.class).eventLoopPoolSize();
-            } else if (apixProperties.getApplicationProperties() != null && apixProperties.getApplicationProperties().containsKey(PropertyKeys.VERTX_EVENT_LOOP_POOL_SIZE)) {
-                eventLoopPoolSize = ClassUtil.valueOf(apixProperties.getApplicationProperties().getProperty(PropertyKeys.VERTX_EVENT_LOOP_POOL_SIZE), Integer.class, DefaultVertxConfig.EVENT_POOL_SIZE);
+            if (vertxOptions == null) {
+                vertxOptions = new VertxOptions();
+                if (mainClass.isAnnotationPresent(ApixVertxOptions.class)) {
+                    ApixVertxOptions apixVertxOptions = mainClass.getAnnotation(ApixVertxOptions.class);
+                    vertxOptions.setEventLoopPoolSize(apixVertxOptions.eventLoopPoolSize());
+                    vertxOptions.setDisableTCCL(apixVertxOptions.disableTCCL());
+                    vertxOptions.setBlockedThreadCheckInterval(apixVertxOptions.blockedThreadCheckInterval());
+                    vertxOptions.setWorkerPoolSize(apixVertxOptions.workerPoolSize());
+                    vertxOptions.setInternalBlockingPoolSize(apixVertxOptions.internalBlockingPoolSize());
+                    vertxOptions.setMaxEventLoopExecuteTime(apixVertxOptions.maxEventLoopExecuteTime());
+                    vertxOptions.setMaxWorkerExecuteTime(apixVertxOptions.maxWorkerExecuteTime());
+                    vertxOptions.setWarningExceptionTime(apixVertxOptions.warningExceptionTime());
+                    vertxOptions.setHAGroup(apixVertxOptions.haGroup());
+                    vertxOptions.setHAEnabled(apixVertxOptions.haEnable());
+                    vertxOptions.setUseDaemonThread(apixVertxOptions.useDaemonThread());
+                    vertxOptions.setPreferNativeTransport(apixVertxOptions.preferNativeTransport());
+                }
             }
+        } catch (Exception e) {
+            ConsoleLog.error(e);
         } finally {
-            if (eventLoopPoolSize == null)
-                eventLoopPoolSize = DefaultVertxConfig.EVENT_POOL_SIZE;
+            vertx = Vertx.vertx(vertxOptions);
         }
-
-        vertxOptions.setEventLoopPoolSize(eventLoopPoolSize);
-        vertx = Vertx.vertx(vertxOptions);
-    }
-
-    private HttpServerOptions createServerOptions() {
-        HttpServerOptions httpServerOptions = new HttpServerOptions();
-        Integer idleTimeout = DefaultVertxConfig.IDLE_TIMEOUT;
-        Boolean compressionSupported = DefaultVertxConfig.COMPRESSION_SUPPORTED;
-        try {
-            if (mainClass.isAnnotationPresent(VertxConfiguration.class)) {
-                idleTimeout = mainClass.getAnnotation(VertxConfiguration.class).idleTimeout();
-                compressionSupported = mainClass.getAnnotation(VertxConfiguration.class).compressionSupported();
-            } else if (apixProperties.getApplicationProperties().containsKey(PropertyKeys.VERTX_IDLE_TIMEOUT)) {
-                idleTimeout = ClassUtil.valueOf(apixProperties.getApplicationProperties().getProperty(PropertyKeys.VERTX_IDLE_TIMEOUT), Integer.class, DefaultVertxConfig.IDLE_TIMEOUT);
-                compressionSupported = ClassUtil.valueOf(apixProperties.getApplicationProperties().getProperty(PropertyKeys.VERTX_COMPRESSION_SUPPORTED), Boolean.class, DefaultVertxConfig.COMPRESSION_SUPPORTED);
-            }
-        } finally {
-            if (idleTimeout == null)
-                idleTimeout = DefaultVertxConfig.IDLE_TIMEOUT;
-            if (compressionSupported == null)
-                compressionSupported = DefaultVertxConfig.COMPRESSION_SUPPORTED;
-        }
-        httpServerOptions.setCompressionSupported(compressionSupported);
-        httpServerOptions.setIdleTimeout(idleTimeout);
-        return httpServerOptions;
     }
 
     private void startServer(Router router, Handler<HttpServer> onStart) {
-        HttpServer httpServer = vertx.createHttpServer(createServerOptions());
-        httpServer
-                .requestHandler(router)
-                .listen(port)
-                .onSuccess(server -> {
-                    ConsoleLog.forcedLog(ConsoleLog.Level.INFO, "HTTP server started on port " + server.actualPort() + " (" + env.name() + ") - visit http://localhost:" + server.actualPort() + "/");
-                    if (onStart != null)
-                        onStart.handle(server);
-                    if (onSuccessHandler != null)
-                        onSuccessHandler.handle(server);
-                })
-                .onFailure(throwable -> {
-                    httpServer.close();
-                    ConsoleLog.error(new Throwable("Can't start server on port " + port, throwable));
-                    if (onFailureHandler != null)
-                        onFailureHandler.handle(throwable);
-                });
+        try {
+            if (httpServerOptions == null) {
+                httpServerOptions = new HttpServerOptions();
+                if (mainClass.isAnnotationPresent(ApixHttpServerOptions.class)) {
+                    ApixHttpServerOptions apixHttpServerOptions = mainClass.getAnnotation(ApixHttpServerOptions.class);
+                    httpServerOptions.setPort(port != 0 ? port : apixHttpServerOptions.port());
+                    httpServerOptions.setSsl(apixHttpServerOptions.ssl());
+                    httpServerOptions.setCompressionSupported(apixHttpServerOptions.compressionSupported());
+                    httpServerOptions.setCompressionLevel(apixHttpServerOptions.compressionLevel());
+                    httpServerOptions.setMaxWebSocketFrameSize(apixHttpServerOptions.maxWebsocketFrameSize());
+                    httpServerOptions.setMaxWebSocketMessageSize(apixHttpServerOptions.maxWebSocketMessageSize());
+                    httpServerOptions.setMaxChunkSize(apixHttpServerOptions.maxChunkSize());
+                    httpServerOptions.setMaxFormAttributeSize(apixHttpServerOptions.maxFormAttributeSize());
+                    httpServerOptions.setMaxFormFields(apixHttpServerOptions.maxFormFields());
+                    httpServerOptions.setMaxFormBufferedBytes(apixHttpServerOptions.maxFormBufferedBytes());
+                    httpServerOptions.setHttp2ClearTextEnabled(apixHttpServerOptions.http2ClearTextEnabled());
+                    httpServerOptions.setHttp2ConnectionWindowSize(apixHttpServerOptions.http2ConnectionWindowSize());
+                    httpServerOptions.setDecompressionSupported(apixHttpServerOptions.decompressionSupported());
+                    httpServerOptions.setAcceptUnmaskedFrames(apixHttpServerOptions.acceptUnmaskedFrames());
+                    httpServerOptions.setDecoderInitialBufferSize(apixHttpServerOptions.decoderInitialBufferSize());
+                    httpServerOptions.setPerFrameWebSocketCompressionSupported(apixHttpServerOptions.perFrameWebSocketCompressionSupported());
+                    httpServerOptions.setPerMessageWebSocketCompressionSupported(apixHttpServerOptions.perMessageWebSocketCompressionSupported());
+                    httpServerOptions.setWebSocketPreferredClientNoContext(apixHttpServerOptions.webSocketPreferredClientNoContext());
+                    httpServerOptions.setWebSocketAllowServerNoContext(apixHttpServerOptions.webSocketAllowServerNoContext());
+                    httpServerOptions.setRegisterWebSocketWriteHandlers(apixHttpServerOptions.registerWebSocketWriteHandlers());
+                    httpServerOptions.setCompressionLevel(apixHttpServerOptions.compressionLevel());
+                    httpServerOptions.setWebSocketClosingTimeout(apixHttpServerOptions.webSocketClosingTimeout());
+                    httpServerOptions.setHttp2RstFloodMaxRstFramePerWindow(apixHttpServerOptions.http2RstFloodMaxRstFramePerWindow());
+                    httpServerOptions.setHttp2RstFloodWindowDuration(apixHttpServerOptions.http2RstFloodWindowDuration());
+                }
+            }
+        } catch (Exception e) {
+            ConsoleLog.error(e);
+        } finally {
+            HttpServer httpServer = vertx.createHttpServer(httpServerOptions);
+            httpServer
+                    .requestHandler(router)
+                    .listen()
+                    .onSuccess(server -> {
+                        ConsoleLog.forcedLog(ConsoleLog.Level.INFO, "HTTP server started on port " + server.actualPort() + " (" + env.name() + ") - visit http://localhost:" + server.actualPort() + "/");
+                        if (onStart != null)
+                            onStart.handle(server);
+                        if (onSuccessHandler != null)
+                            onSuccessHandler.handle(server);
+                    })
+                    .onFailure(throwable -> {
+                        httpServer.close();
+                        ConsoleLog.error(new Throwable("Can't start server on port " + port, throwable));
+                        if (onFailureHandler != null)
+                            onFailureHandler.handle(throwable);
+                    });
+        }
     }
 
 
@@ -354,13 +376,13 @@ public class Apix {
     private void displayApixLogo() {
         System.out.println("       _       ____     _   __     __                              ");
         System.out.println("      / \\     |  _ \\   | |  \\ \\   / /                              ");
-        System.out.println("     / _ \\    | |_) |  | |   \\ \\ / /       0 4 / 2 0 2 4           ");
-        System.out.println("    / ___ \\   |  _ /   | |   / / \\ \\       V E R S I O N . 1.0.0   ");
+        System.out.println("     / _ \\    | |_) |  | |   \\ \\ / /       0 6 / 2 0 2 4           ");
+        System.out.println("    / ___ \\   |  _ /   | |   / / \\ \\       V E R S I O N . 2.0.0   ");
         System.out.println("   /_/   \\_\\  |_|      |_|  /_/   \\_\\                              \n");
     }
 
     /**
-     * It will look for the port in the given parameter, if it does not find one or if there is an error, it will use the default port {@link Apix#DEFAULT_PORT}
+     * It will look for the port in the given parameter, if it does not find one or if there is an error, it will use the default port {@link ApixDefaultConfiguration#PORT}
      *
      * @param properties
      */
@@ -369,8 +391,13 @@ public class Apix {
             String strPort = properties.getProperty(PropertyKeys.APP_PORT);
             this.port = Integer.parseInt(strPort);
         } catch (Exception e) {
-            this.port = DEFAULT_PORT;
+            this.port = ApixDefaultConfiguration.PORT;
         }
+    }
+
+    public Apix setPort(int port) {
+        this.port = port;
+        return this;
     }
 
     private void showLog(Properties properties) {
@@ -387,7 +414,7 @@ public class Apix {
         return Apix.getInstance().vertx;
     }
 
-    protected Apix onSuccessHandler(Handler<HttpServer> onSuccessHandler) {
+    public Apix onSuccessHandler(Handler<HttpServer> onSuccessHandler) {
         this.onSuccessHandler = onSuccessHandler;
         return this;
     }
@@ -397,8 +424,19 @@ public class Apix {
         return this;
     }
 
-    public void setEnv(Environment env) {
+    public Apix setEnv(Environment env) {
         this.env = env;
+        return this;
+    }
+
+    public Apix setVertxOptions(VertxOptions vertxOptions) {
+        this.vertxOptions = vertxOptions;
+        return this;
+    }
+
+    public Apix setHttpServerOptions(HttpServerOptions httpServerOptions) {
+        this.httpServerOptions = httpServerOptions;
+        return this;
     }
 
     public Environment getEnv() {
