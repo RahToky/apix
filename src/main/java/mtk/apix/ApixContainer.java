@@ -20,10 +20,10 @@ import java.util.*;
 class ApixContainer {
 
     private final Map<Class<?>, Object> components = new HashMap<>();
-    private Properties applicationProperties = new Properties();
     public static Class<? extends Annotation>[] componentsAnnotations;
     public static Class<? extends Annotation>[] controllerAnnotations;
     public static Class<? extends Annotation>[] httpMethodAnnotation;
+    private Properties applicationProperties = new Properties();
 
 
     static {

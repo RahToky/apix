@@ -33,16 +33,15 @@ public class Apix {
     private static Apix instance;
     private final ApixContainer apixContainer;
     private final ApixProperties apixProperties;
-    private Vertx vertx;
-    private final static int DEFAULT_PORT = 9204;
-    private int port;
     private Handler<HttpServer> onSuccessHandler;
     private Handler<Throwable> onFailureHandler;
     private Environment env;
     private Class<?> mainClass;
+    private Vertx vertx;
+    private int port;
 
     private Apix() {
-        port = DEFAULT_PORT;
+        port = DefaultVertxConfig.PORT;
         env = Environment.DEFAULT;
         apixContainer = new ApixContainer();
         apixProperties = new ApixProperties();
@@ -86,7 +85,7 @@ public class Apix {
     public static void run(Class<?> mainClass, String[] args, Handler<HttpServer> onSuccessHandler, Handler<Throwable> onFailureHandler) {
         try {
             if (!mainClass.isAnnotationPresent(ApixApplication.class)) {
-                throw new RuntimeException("Main class must annotated with @ApixApplication");
+                throw new RuntimeException("Main class must annotate with @ApixApplication");
             }
 
             Apix apix = Apix.getInstance();
@@ -128,6 +127,8 @@ public class Apix {
     }
 
     private void initVertx() {
+
+
         VertxOptions vertxOptions = new VertxOptions();
 
         Integer eventLoopPoolSize = DefaultVertxConfig.EVENT_POOL_SIZE;
@@ -138,8 +139,6 @@ public class Apix {
             } else if (apixProperties.getApplicationProperties() != null && apixProperties.getApplicationProperties().containsKey(PropertyKeys.VERTX_EVENT_LOOP_POOL_SIZE)) {
                 eventLoopPoolSize = ClassUtil.valueOf(apixProperties.getApplicationProperties().getProperty(PropertyKeys.VERTX_EVENT_LOOP_POOL_SIZE), Integer.class, DefaultVertxConfig.EVENT_POOL_SIZE);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         } finally {
             if (eventLoopPoolSize == null)
                 eventLoopPoolSize = DefaultVertxConfig.EVENT_POOL_SIZE;
@@ -161,7 +160,6 @@ public class Apix {
                 idleTimeout = ClassUtil.valueOf(apixProperties.getApplicationProperties().getProperty(PropertyKeys.VERTX_IDLE_TIMEOUT), Integer.class, DefaultVertxConfig.IDLE_TIMEOUT);
                 compressionSupported = ClassUtil.valueOf(apixProperties.getApplicationProperties().getProperty(PropertyKeys.VERTX_COMPRESSION_SUPPORTED), Boolean.class, DefaultVertxConfig.COMPRESSION_SUPPORTED);
             }
-        } catch (Exception e) {
         } finally {
             if (idleTimeout == null)
                 idleTimeout = DefaultVertxConfig.IDLE_TIMEOUT;

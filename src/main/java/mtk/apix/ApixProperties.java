@@ -17,10 +17,16 @@ import java.nio.file.Paths;
 import java.util.*;
 
 /**
+<<<<<<< Updated upstream
+=======
+ * Class which manages the application.properties file depending on the application launch environment
+ *
+>>>>>>> Stashed changes
  * @author mahatoky rasolonirina
  */
 class ApixProperties {
-    private Properties applicationProperties = new Properties();
+
+    private final Properties applicationProperties = new Properties();
     public static final Map<Environment, String> APP_PROPS_FILENAMES;
 
     static {
@@ -50,7 +56,7 @@ class ApixProperties {
                         applicationProperties.load(input2);
                         ConsoleLog.trace("Used properties: " + path);
                     } catch (Exception e) {
-                        throw new Exception(path + "", e);
+                        throw new Exception(path.toString(), e);
                     }
                 } else {
                     throw new Exception(path + "not found");
@@ -63,7 +69,7 @@ class ApixProperties {
                         applicationProperties.load(input2);
                         ConsoleLog.trace("Used properties: " + path);
                     } catch (Exception e) {
-                        throw new Exception(path + "", e);
+                        throw new Exception(path.toString(), e);
                     }
                 } else {
                     try (InputStream input = mainClass.getClassLoader().getResourceAsStream(prioritizedPropsPaths.get(1))) {
