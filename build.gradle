@@ -33,5 +33,5 @@ jar {
         attributes 'Implementation-Title': project.name,
                 'Implementation-Version': project.version
     }
-    destinationDir project.file('C:\\Users\\mtk_ext\\EXO\\java\\DemoApix\\libs')
+    destinationDir project.file('jar')
 }
