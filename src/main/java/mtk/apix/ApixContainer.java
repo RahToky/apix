@@ -98,10 +98,6 @@ class ApixContainer {
         }
         for (Field field : autowiredFields) {
             if (getFirstAssignableComponent(field.getType()) == null) {
-                System.out.println(componentClass + " NOT READY cause " + field.getType() + " not in components");
-                components.forEach((aClass, o) -> {
-                    System.out.println("-componentClass=" + aClass + ", instance=" + (components.get(aClass)));
-                });
                 return false;
             }
         }

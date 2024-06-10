@@ -39,12 +39,15 @@ public class Apix {
     private Vertx vertx;
     private VertxOptions vertxOptions;
     private HttpServerOptions httpServerOptions;
-    private int port;
+    private int port = ApixDefaultConfiguration.PORT;
+    private String[] args;
 
     private Apix() {
         env = Environment.DEFAULT;
         apixContainer = new ApixContainer();
         apixProperties = new ApixProperties();
+        httpServerOptions = new HttpServerOptions();
+        httpServerOptions.setPort(ApixDefaultConfiguration.PORT);
     }
 
     public static Apix getInstance() {
@@ -66,7 +69,7 @@ public class Apix {
      * @param args
      */
     public static void run(Class<?> mainClass, String[] args) {
-        getInstance().runApp(mainClass, args);
+        run(mainClass, args, null, null);
     }
 
     /**
@@ -86,22 +89,15 @@ public class Apix {
         Apix apix = getInstance();
         apix.onSuccessHandler(onSuccessHandler);
         apix.onFailureHandler(onFailureHandler);
-        apix.runApp(mainClass, args);
+        apix.setMainClass(mainClass);
+        apix.setArgs(args);
+        apix.runApp();
     }
 
-    public void runApp(Class<?> mainClass, String[] args) {
+    public void runApp() {
         try {
             if (!mainClass.isAnnotationPresent(ApixApplication.class)) {
                 throw new RuntimeException("Main class must annotate with @ApixApplication");
-            }
-            this.mainClass = mainClass;
-            List<String> argsList = Arrays.asList(args);
-            if (argsList.contains("--local")) {
-                this.env = Environment.LOCAL;
-            } else if (argsList.contains("--dev")) {
-                this.env = Environment.DEV;
-            } else if (argsList.contains("--prod")) {
-                this.env = Environment.PROD;
             }
 
             this.displayApixLogo();
@@ -114,7 +110,6 @@ public class Apix {
             if (!this.apixContainer.getRestControllers().isEmpty()) {
                 Router router = Router.router(this.vertx);
                 router.route().handler(BodyHandler.create());
-                this.fixPort(this.apixProperties.getApplicationProperties());
                 this.createInterceptor(router);
                 this.createEndpoints(router);
                 this.createDefaultEndpoint(router);
@@ -128,25 +123,55 @@ public class Apix {
         }
     }
 
+    public Apix setMainClass(Class<?> mainClass) {
+        this.mainClass = mainClass;
+        return this;
+    }
+
+    public Apix setArgs(String[] args) {
+        this.args = args;
+        List<String> argsList = Arrays.asList(args);
+        if (argsList.contains("--local")) {
+            this.env = Environment.LOCAL;
+        } else if (argsList.contains("--dev")) {
+            this.env = Environment.DEV;
+        } else if (argsList.contains("--prod")) {
+            this.env = Environment.PROD;
+        }
+        return this;
+    }
+
+    /**
+     * Get vertxOptions value by annotation
+     * Else return new default vertxOptions instance
+     *
+     * @return
+     */
+    public VertxOptions getAnnotationVertxOptions() {
+        VertxOptions vertxOptionsAnnotation = new VertxOptions();
+        if (mainClass.isAnnotationPresent(ApixVertxOptions.class)) {
+            ApixVertxOptions apixVertxOptions = mainClass.getAnnotation(ApixVertxOptions.class);
+            vertxOptionsAnnotation = new VertxOptions();
+            vertxOptionsAnnotation.setEventLoopPoolSize(apixVertxOptions.eventLoopPoolSize());
+            vertxOptionsAnnotation.setDisableTCCL(apixVertxOptions.disableTCCL());
+            vertxOptionsAnnotation.setBlockedThreadCheckInterval(apixVertxOptions.blockedThreadCheckInterval());
+            vertxOptionsAnnotation.setWorkerPoolSize(apixVertxOptions.workerPoolSize());
+            vertxOptionsAnnotation.setInternalBlockingPoolSize(apixVertxOptions.internalBlockingPoolSize());
+            vertxOptionsAnnotation.setMaxEventLoopExecuteTime(apixVertxOptions.maxEventLoopExecuteTime());
+            vertxOptionsAnnotation.setMaxWorkerExecuteTime(apixVertxOptions.maxWorkerExecuteTime());
+            vertxOptionsAnnotation.setWarningExceptionTime(apixVertxOptions.warningExceptionTime());
+            vertxOptionsAnnotation.setHAGroup(apixVertxOptions.haGroup());
+            vertxOptionsAnnotation.setHAEnabled(apixVertxOptions.haEnable());
+            vertxOptionsAnnotation.setUseDaemonThread(apixVertxOptions.useDaemonThread());
+            vertxOptionsAnnotation.setPreferNativeTransport(apixVertxOptions.preferNativeTransport());
+        }
+        return vertxOptionsAnnotation;
+    }
+
     private void initVertx() {
         try {
             if (vertxOptions == null) {
-                vertxOptions = new VertxOptions();
-                if (mainClass.isAnnotationPresent(ApixVertxOptions.class)) {
-                    ApixVertxOptions apixVertxOptions = mainClass.getAnnotation(ApixVertxOptions.class);
-                    vertxOptions.setEventLoopPoolSize(apixVertxOptions.eventLoopPoolSize());
-                    vertxOptions.setDisableTCCL(apixVertxOptions.disableTCCL());
-                    vertxOptions.setBlockedThreadCheckInterval(apixVertxOptions.blockedThreadCheckInterval());
-                    vertxOptions.setWorkerPoolSize(apixVertxOptions.workerPoolSize());
-                    vertxOptions.setInternalBlockingPoolSize(apixVertxOptions.internalBlockingPoolSize());
-                    vertxOptions.setMaxEventLoopExecuteTime(apixVertxOptions.maxEventLoopExecuteTime());
-                    vertxOptions.setMaxWorkerExecuteTime(apixVertxOptions.maxWorkerExecuteTime());
-                    vertxOptions.setWarningExceptionTime(apixVertxOptions.warningExceptionTime());
-                    vertxOptions.setHAGroup(apixVertxOptions.haGroup());
-                    vertxOptions.setHAEnabled(apixVertxOptions.haEnable());
-                    vertxOptions.setUseDaemonThread(apixVertxOptions.useDaemonThread());
-                    vertxOptions.setPreferNativeTransport(apixVertxOptions.preferNativeTransport());
-                }
+                vertxOptions = getAnnotationVertxOptions();
             }
         } catch (Exception e) {
             ConsoleLog.error(e);
@@ -155,59 +180,64 @@ public class Apix {
         }
     }
 
-    private void startServer(Router router, Handler<HttpServer> onStart) {
-        try {
-            if (httpServerOptions == null) {
-                httpServerOptions = new HttpServerOptions();
-                if (mainClass.isAnnotationPresent(ApixHttpServerOptions.class)) {
-                    ApixHttpServerOptions apixHttpServerOptions = mainClass.getAnnotation(ApixHttpServerOptions.class);
-                    httpServerOptions.setPort(port != 0 ? port : apixHttpServerOptions.port());
-                    httpServerOptions.setSsl(apixHttpServerOptions.ssl());
-                    httpServerOptions.setCompressionSupported(apixHttpServerOptions.compressionSupported());
-                    httpServerOptions.setCompressionLevel(apixHttpServerOptions.compressionLevel());
-                    httpServerOptions.setMaxWebSocketFrameSize(apixHttpServerOptions.maxWebsocketFrameSize());
-                    httpServerOptions.setMaxWebSocketMessageSize(apixHttpServerOptions.maxWebSocketMessageSize());
-                    httpServerOptions.setMaxChunkSize(apixHttpServerOptions.maxChunkSize());
-                    httpServerOptions.setMaxFormAttributeSize(apixHttpServerOptions.maxFormAttributeSize());
-                    httpServerOptions.setMaxFormFields(apixHttpServerOptions.maxFormFields());
-                    httpServerOptions.setMaxFormBufferedBytes(apixHttpServerOptions.maxFormBufferedBytes());
-                    httpServerOptions.setHttp2ClearTextEnabled(apixHttpServerOptions.http2ClearTextEnabled());
-                    httpServerOptions.setHttp2ConnectionWindowSize(apixHttpServerOptions.http2ConnectionWindowSize());
-                    httpServerOptions.setDecompressionSupported(apixHttpServerOptions.decompressionSupported());
-                    httpServerOptions.setAcceptUnmaskedFrames(apixHttpServerOptions.acceptUnmaskedFrames());
-                    httpServerOptions.setDecoderInitialBufferSize(apixHttpServerOptions.decoderInitialBufferSize());
-                    httpServerOptions.setPerFrameWebSocketCompressionSupported(apixHttpServerOptions.perFrameWebSocketCompressionSupported());
-                    httpServerOptions.setPerMessageWebSocketCompressionSupported(apixHttpServerOptions.perMessageWebSocketCompressionSupported());
-                    httpServerOptions.setWebSocketPreferredClientNoContext(apixHttpServerOptions.webSocketPreferredClientNoContext());
-                    httpServerOptions.setWebSocketAllowServerNoContext(apixHttpServerOptions.webSocketAllowServerNoContext());
-                    httpServerOptions.setRegisterWebSocketWriteHandlers(apixHttpServerOptions.registerWebSocketWriteHandlers());
-                    httpServerOptions.setCompressionLevel(apixHttpServerOptions.compressionLevel());
-                    httpServerOptions.setWebSocketClosingTimeout(apixHttpServerOptions.webSocketClosingTimeout());
-                    httpServerOptions.setHttp2RstFloodMaxRstFramePerWindow(apixHttpServerOptions.http2RstFloodMaxRstFramePerWindow());
-                    httpServerOptions.setHttp2RstFloodWindowDuration(apixHttpServerOptions.http2RstFloodWindowDuration());
-                }
-            }
-        } catch (Exception e) {
-            ConsoleLog.error(e);
-        } finally {
-            HttpServer httpServer = vertx.createHttpServer(httpServerOptions);
-            httpServer
-                    .requestHandler(router)
-                    .listen()
-                    .onSuccess(server -> {
-                        ConsoleLog.forcedLog(ConsoleLog.Level.INFO, "HTTP server started on port " + server.actualPort() + " (" + env.name() + ") - visit http://localhost:" + server.actualPort() + "/");
-                        if (onStart != null)
-                            onStart.handle(server);
-                        if (onSuccessHandler != null)
-                            onSuccessHandler.handle(server);
-                    })
-                    .onFailure(throwable -> {
-                        httpServer.close();
-                        ConsoleLog.error(new Throwable("Can't start server on port " + port, throwable));
-                        if (onFailureHandler != null)
-                            onFailureHandler.handle(throwable);
-                    });
+    /**
+     * Return {@link HttpServerOptions} if main class is annotate with
+     * Else return null object
+     *
+     * @return
+     */
+    public HttpServerOptions getAnnotationHttpServerOptions() {
+        if (mainClass.isAnnotationPresent(ApixHttpServerOptions.class)) {
+            HttpServerOptions httpServerOptionsAnnotation = new HttpServerOptions();
+            ApixHttpServerOptions apixHttpServerOptions = mainClass.getAnnotation(ApixHttpServerOptions.class);
+            httpServerOptionsAnnotation.setPort(apixHttpServerOptions.port());
+            httpServerOptionsAnnotation.setSsl(apixHttpServerOptions.ssl());
+            httpServerOptionsAnnotation.setCompressionSupported(apixHttpServerOptions.compressionSupported());
+            httpServerOptionsAnnotation.setCompressionLevel(apixHttpServerOptions.compressionLevel());
+            httpServerOptionsAnnotation.setMaxWebSocketFrameSize(apixHttpServerOptions.maxWebsocketFrameSize());
+            httpServerOptionsAnnotation.setMaxWebSocketMessageSize(apixHttpServerOptions.maxWebSocketMessageSize());
+            httpServerOptionsAnnotation.setMaxChunkSize(apixHttpServerOptions.maxChunkSize());
+            httpServerOptionsAnnotation.setMaxFormAttributeSize(apixHttpServerOptions.maxFormAttributeSize());
+            httpServerOptionsAnnotation.setMaxFormFields(apixHttpServerOptions.maxFormFields());
+            httpServerOptionsAnnotation.setMaxFormBufferedBytes(apixHttpServerOptions.maxFormBufferedBytes());
+            httpServerOptionsAnnotation.setHttp2ClearTextEnabled(apixHttpServerOptions.http2ClearTextEnabled());
+            httpServerOptionsAnnotation.setHttp2ConnectionWindowSize(apixHttpServerOptions.http2ConnectionWindowSize());
+            httpServerOptionsAnnotation.setDecompressionSupported(apixHttpServerOptions.decompressionSupported());
+            httpServerOptionsAnnotation.setAcceptUnmaskedFrames(apixHttpServerOptions.acceptUnmaskedFrames());
+            httpServerOptionsAnnotation.setDecoderInitialBufferSize(apixHttpServerOptions.decoderInitialBufferSize());
+            httpServerOptionsAnnotation.setPerFrameWebSocketCompressionSupported(apixHttpServerOptions.perFrameWebSocketCompressionSupported());
+            httpServerOptionsAnnotation.setPerMessageWebSocketCompressionSupported(apixHttpServerOptions.perMessageWebSocketCompressionSupported());
+            httpServerOptionsAnnotation.setWebSocketPreferredClientNoContext(apixHttpServerOptions.webSocketPreferredClientNoContext());
+            httpServerOptionsAnnotation.setWebSocketAllowServerNoContext(apixHttpServerOptions.webSocketAllowServerNoContext());
+            httpServerOptionsAnnotation.setRegisterWebSocketWriteHandlers(apixHttpServerOptions.registerWebSocketWriteHandlers());
+            httpServerOptionsAnnotation.setCompressionLevel(apixHttpServerOptions.compressionLevel());
+            httpServerOptionsAnnotation.setWebSocketClosingTimeout(apixHttpServerOptions.webSocketClosingTimeout());
+            httpServerOptionsAnnotation.setHttp2RstFloodMaxRstFramePerWindow(apixHttpServerOptions.http2RstFloodMaxRstFramePerWindow());
+            httpServerOptionsAnnotation.setHttp2RstFloodWindowDuration(apixHttpServerOptions.http2RstFloodWindowDuration());
+            httpServerOptionsAnnotation.setWebSocketCompressionLevel(apixHttpServerOptions.webSocketCompressionLevel());
+            return httpServerOptionsAnnotation;
         }
+        return null;
+    }
+
+    private void startServer(Router router, Handler<HttpServer> onStart) {
+        HttpServer httpServer = vertx.createHttpServer(getHttpServerOptions());
+        httpServer
+                .requestHandler(router)
+                .listen(port)
+                .onSuccess(server -> {
+                    ConsoleLog.forcedLog(ConsoleLog.Level.INFO, "HTTP server started on port " + server.actualPort() + " (" + env.name() + ") - visit http://localhost:" + server.actualPort() + "/");
+                    if (onStart != null)
+                        onStart.handle(server);
+                    if (onSuccessHandler != null)
+                        onSuccessHandler.handle(server);
+                })
+                .onFailure(throwable -> {
+                    httpServer.close();
+                    ConsoleLog.error(new Throwable("Can't start server on port " + port, throwable));
+                    if (onFailureHandler != null)
+                        onFailureHandler.handle(throwable);
+                });
     }
 
 
@@ -378,20 +408,6 @@ public class Apix {
         System.out.println("   /_/   \\_\\  |_|      |_|  /_/   \\_\\                              \n");
     }
 
-    /**
-     * It will look for the port in the given parameter, if it does not find one or if there is an error, it will use the default port {@link ApixDefaultConfiguration#PORT}
-     *
-     * @param properties
-     */
-    private void fixPort(Properties properties) {
-        try {
-            String strPort = properties.getProperty(PropertyKeys.APP_PORT);
-            this.port = Integer.parseInt(strPort);
-        } catch (Exception e) {
-            this.port = ApixDefaultConfiguration.PORT;
-        }
-    }
-
     public Apix setPort(int port) {
         this.port = port;
         return this;
@@ -399,11 +415,7 @@ public class Apix {
 
     private void showLog(Properties properties) {
         if (properties != null && properties.containsKey(PropertyKeys.SHOW_LOG)) {
-            try {
-                ConsoleLog.getInstance().setShow(Boolean.parseBoolean(properties.getProperty(PropertyKeys.SHOW_LOG)));
-            } catch (Exception e) {
-
-            }
+            ConsoleLog.getInstance().setShow(Boolean.parseBoolean(properties.getProperty(PropertyKeys.SHOW_LOG, "true")));
         }
     }
 
@@ -433,6 +445,8 @@ public class Apix {
 
     public Apix setHttpServerOptions(HttpServerOptions httpServerOptions) {
         this.httpServerOptions = httpServerOptions;
+        if (httpServerOptions != null && httpServerOptions.getPort() != 80)
+            this.port = httpServerOptions.getPort();
         return this;
     }
 
@@ -446,5 +460,48 @@ public class Apix {
 
     public static Properties getProperties() {
         return getInstance().apixProperties.getApplicationProperties();
+    }
+
+    public HttpServerOptions getHttpServerOptions() {
+        if (mainClass.isAnnotationPresent(ApixHttpServerOptions.class)) {
+            ApixHttpServerOptions apixHttpServerOptions = mainClass.getAnnotation(ApixHttpServerOptions.class);
+            this.port = apixHttpServerOptions.port();
+            httpServerOptions.setPort(apixHttpServerOptions.port());
+            httpServerOptions.setSsl(apixHttpServerOptions.ssl());
+            httpServerOptions.setCompressionSupported(apixHttpServerOptions.compressionSupported());
+            httpServerOptions.setCompressionLevel(apixHttpServerOptions.compressionLevel());
+            httpServerOptions.setMaxWebSocketFrameSize(apixHttpServerOptions.maxWebsocketFrameSize());
+            httpServerOptions.setMaxWebSocketMessageSize(apixHttpServerOptions.maxWebSocketMessageSize());
+            httpServerOptions.setMaxChunkSize(apixHttpServerOptions.maxChunkSize());
+            httpServerOptions.setMaxFormAttributeSize(apixHttpServerOptions.maxFormAttributeSize());
+            httpServerOptions.setMaxFormFields(apixHttpServerOptions.maxFormFields());
+            httpServerOptions.setMaxFormBufferedBytes(apixHttpServerOptions.maxFormBufferedBytes());
+            httpServerOptions.setHttp2ClearTextEnabled(apixHttpServerOptions.http2ClearTextEnabled());
+            httpServerOptions.setHttp2ConnectionWindowSize(apixHttpServerOptions.http2ConnectionWindowSize());
+            httpServerOptions.setDecompressionSupported(apixHttpServerOptions.decompressionSupported());
+            httpServerOptions.setAcceptUnmaskedFrames(apixHttpServerOptions.acceptUnmaskedFrames());
+            httpServerOptions.setDecoderInitialBufferSize(apixHttpServerOptions.decoderInitialBufferSize());
+            httpServerOptions.setPerFrameWebSocketCompressionSupported(apixHttpServerOptions.perFrameWebSocketCompressionSupported());
+            httpServerOptions.setPerMessageWebSocketCompressionSupported(apixHttpServerOptions.perMessageWebSocketCompressionSupported());
+            httpServerOptions.setWebSocketPreferredClientNoContext(apixHttpServerOptions.webSocketPreferredClientNoContext());
+            httpServerOptions.setWebSocketAllowServerNoContext(apixHttpServerOptions.webSocketAllowServerNoContext());
+            httpServerOptions.setRegisterWebSocketWriteHandlers(apixHttpServerOptions.registerWebSocketWriteHandlers());
+            httpServerOptions.setCompressionLevel(apixHttpServerOptions.compressionLevel());
+            httpServerOptions.setWebSocketClosingTimeout(apixHttpServerOptions.webSocketClosingTimeout());
+            httpServerOptions.setHttp2RstFloodMaxRstFramePerWindow(apixHttpServerOptions.http2RstFloodMaxRstFramePerWindow());
+            httpServerOptions.setHttp2RstFloodWindowDuration(apixHttpServerOptions.http2RstFloodWindowDuration());
+            httpServerOptions.setWebSocketCompressionLevel(apixHttpServerOptions.webSocketCompressionLevel());
+        }
+
+        if (apixProperties.getApplicationProperties().containsKey(PropertyKeys.APP_PORT)) {
+            try {
+                String strPort = this.apixProperties.getApplicationProperties().getProperty(PropertyKeys.APP_PORT);
+                this.port = Integer.parseInt(strPort);
+            } catch (Exception e) {
+                port = httpServerOptions.getPort();
+            }
+        }
+
+        return httpServerOptions;
     }
 }

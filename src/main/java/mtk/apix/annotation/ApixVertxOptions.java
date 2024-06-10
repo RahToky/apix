@@ -28,6 +28,7 @@ public @interface ApixVertxOptions {
     long blockedThreadCheckInterval() default 1_000_000_000L;
 
     String haGroup() default "__DEFAULT__";
+
     boolean haEnable() default false;
 
     boolean disableTCCL() default false;
