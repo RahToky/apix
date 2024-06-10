@@ -2,6 +2,7 @@ package mtk.apix;
 
 import mtk.apix.annotation.*;
 import mtk.apix.exception.DependencyException;
+import mtk.apix.exception.NoSuchBeanDefinitionException;
 import mtk.apix.util.ApixInterceptor;
 import mtk.apix.util.ClassUtil;
 import mtk.apix.util.ConsoleLog;
@@ -64,11 +65,8 @@ class ApixContainer {
         if (componentsClasses.isEmpty())
             return;
         Set<Class<?>> tempComponentsClasses = new HashSet<>(componentsClasses);
-        boolean isCyclicDependency;
 
         while (!tempComponentsClasses.isEmpty()) {
-            isCyclicDependency = true;
-
             for (Iterator<Class<?>> iterator = tempComponentsClasses.iterator(); iterator.hasNext(); ) {
                 Class<?> componentClass = iterator.next();
                 if (isComponentReadyForInstantiation(componentClass)) {
@@ -78,16 +76,9 @@ class ApixContainer {
                     instantiateAllAutowiredFields(objectInstance);
                     components.put(componentClass, objectInstance);
                     iterator.remove();
-                    isCyclicDependency = false;
-                    System.out.println("--> Ready: " + componentClass);
-                } else {
-                    System.out.println("--> not ready: " + componentClass);
+                } else if (!iterator.hasNext()) {
+                    throw new NoSuchBeanDefinitionException(getUnsatisfiedAutowired(componentClass));
                 }
-            }
-
-            if (isCyclicDependency && !tempComponentsClasses.isEmpty()) {
-                componentsClasses.forEach(aClass -> System.out.println("component=" + aClass + ", instance is " + (components.get(aClass))));
-                throw new DependencyException("Bean or component not found or cyclic dependency. Please annotate your class as component or annotate your method with @Bean to consider the result as a component");
             }
         }
     }
@@ -106,7 +97,7 @@ class ApixContainer {
             return true;
         }
         for (Field field : autowiredFields) {
-            if (getComponent(field.getType()) == null) {
+            if (getFirstAssignableComponent(field.getType()) == null) {
                 System.out.println(componentClass + " NOT READY cause " + field.getType() + " not in components");
                 components.forEach((aClass, o) -> {
                     System.out.println("-componentClass=" + aClass + ", instance=" + (components.get(aClass)));
@@ -115,6 +106,16 @@ class ApixContainer {
             }
         }
         return true;
+    }
+
+    private Class<?> getUnsatisfiedAutowired(Class<?> componentClass){
+        List<Field> autowiredFields = ClassUtil.getCurrentAndInheritedAnnotatedFields(componentClass, Autowired.class);
+        for (Field field : autowiredFields) {
+            if (getAssignableClasses(field.getType()).isEmpty()) {
+                return field.getType();
+            }
+        }
+        return null;
     }
 
     /**
@@ -127,7 +128,7 @@ class ApixContainer {
     private void instantiateAllAutowiredFields(Object component) {
         List<Field> objectFields = ClassUtil.getCurrentAndInheritedAnnotatedFields(component.getClass(), Autowired.class);
         for (Field field : objectFields) {
-            Object autowiredComponentField = getComponent(field.getType());
+            Object autowiredComponentField = getFirstAssignableComponent(field.getType());
             if (autowiredComponentField != null) {
                 try {
                     field.setAccessible(true);
@@ -245,7 +246,7 @@ class ApixContainer {
      * @param componentClass
      * @return
      */
-    public Object getComponent(Class<?> componentClass) {
+    public Object getFirstAssignableComponent(Class<?> componentClass) {
         Object component = components.get(componentClass);
         if (component != null) {
             return component;
@@ -257,6 +258,16 @@ class ApixContainer {
             }
             return null;
         }
+    }
+
+    public List<Class<?>> getAssignableClasses(Class<?> componentClass){
+        ArrayList<Class<?>> assignableClasses = new ArrayList<>();
+        for (Class<?> storedComponentClass : components.keySet()) {
+            if (componentClass.isAssignableFrom(storedComponentClass)) {
+                assignableClasses.add(storedComponentClass);
+            }
+        }
+        return assignableClasses;
     }
 
     public Properties getApplicationProperties() {

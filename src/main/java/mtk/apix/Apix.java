@@ -12,7 +12,6 @@ import io.vertx.ext.web.handler.BodyHandler;
 import mtk.apix.annotation.*;
 import mtk.apix.constant.ApixDefaultConfiguration;
 import mtk.apix.constant.PropertyKeys;
-import mtk.apix.exception.DependencyException;
 import mtk.apix.util.ClassUtil;
 import mtk.apix.util.ConsoleLog;
 import mtk.apix.util.Environment;
@@ -112,7 +111,6 @@ public class Apix {
             this.apixContainer.addComponent(this.vertx.getClass(), this.vertx);
             this.apixContainer.init(mainClass, this.apixProperties.getApplicationProperties(), this.env);
 
-            System.out.println("--------> controllersSize=" + apixContainer.getRestControllers().size());
             if (!this.apixContainer.getRestControllers().isEmpty()) {
                 Router router = Router.router(this.vertx);
                 router.route().handler(BodyHandler.create());
@@ -126,7 +124,6 @@ public class Apix {
                 ConsoleLog.warn("Server not started: no controller found!");
             }
         } catch (Exception e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
@@ -444,7 +441,7 @@ public class Apix {
     }
 
     public static <T> T getBean(Class<T> beanClass) {
-        return (T) getInstance().apixContainer.getComponent(beanClass);
+        return (T) getInstance().apixContainer.getFirstAssignableComponent(beanClass);
     }
 
     public static Properties getProperties() {
