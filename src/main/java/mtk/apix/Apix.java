@@ -140,8 +140,6 @@ public class Apix {
             } else if (apixProperties.getApplicationProperties() != null && apixProperties.getApplicationProperties().containsKey(PropertyKeys.VERTX_EVENT_LOOP_POOL_SIZE)) {
                 eventLoopPoolSize = ClassUtil.valueOf(apixProperties.getApplicationProperties().getProperty(PropertyKeys.VERTX_EVENT_LOOP_POOL_SIZE), Integer.class, DefaultVertxConfig.EVENT_POOL_SIZE);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         } finally {
             if (eventLoopPoolSize == null)
                 eventLoopPoolSize = DefaultVertxConfig.EVENT_POOL_SIZE;
@@ -163,7 +161,6 @@ public class Apix {
                 idleTimeout = ClassUtil.valueOf(apixProperties.getApplicationProperties().getProperty(PropertyKeys.VERTX_IDLE_TIMEOUT), Integer.class, DefaultVertxConfig.IDLE_TIMEOUT);
                 compressionSupported = ClassUtil.valueOf(apixProperties.getApplicationProperties().getProperty(PropertyKeys.VERTX_COMPRESSION_SUPPORTED), Boolean.class, DefaultVertxConfig.COMPRESSION_SUPPORTED);
             }
-        } catch (Exception e) {
         } finally {
             if (idleTimeout == null)
                 idleTimeout = DefaultVertxConfig.IDLE_TIMEOUT;
