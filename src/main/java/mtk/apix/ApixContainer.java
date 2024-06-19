@@ -1,7 +1,6 @@
 package mtk.apix;
 
 import mtk.apix.annotation.*;
-import mtk.apix.exception.DependencyException;
 import mtk.apix.exception.NoSuchBeanDefinitionException;
 import mtk.apix.util.ApixInterceptor;
 import mtk.apix.util.ClassUtil;
@@ -122,7 +121,7 @@ class ApixContainer {
     /**
      * Only component class benefit from dependency injection. And only properties annotated with @Autowired are managed.
      * * Find all properties annotated with @Autowired, find instance in {@link #components} then inject instance to properties
-     * * If no instance found in {@link #components}, throw {@link DependencyException}
+     * * If no instance found in {@link #components}, throw {@link NoSuchBeanDefinitionException}
      *
      * @param component
      */

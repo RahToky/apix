@@ -18,23 +18,28 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import java.util.jar.JarInputStream;
 import java.util.stream.Collectors;
-
-import static io.vertx.ext.web.impl.Utils.getClassLoader;
 
 /**
  * @author mahatoky rasolonirina
  */
 @SuppressWarnings("unchecked")
 public final class ClassUtil {
+
     private ClassUtil() {
     }
 
+    /**
+     * When application is running as jar
+     * @param mainClass
+     * @param packageName
+     * @param annotations
+     * @return
+     * @see {@link ClassUtil#getAnnotatedClass(Class, String, Class[])}
+     */
     public static Set<Class<?>> getJarAnnotatedClass(Class<?> mainClass, String packageName, Class<? extends Annotation>[] annotations) {
         Set<Class<?>> classes = new HashSet<>();
         try {
@@ -67,7 +72,14 @@ public final class ClassUtil {
         return classes;
     }
 
-
+    /**
+     * When application is running as simple project (not jar)
+     * @param mainClass
+     * @param packageName
+     * @param annotations
+     * @return
+     * @see {@link ClassUtil#getJarAnnotatedClass(Class, String, Class[])}
+     */
     public static Set<Class<?>> getAnnotatedClass(Class<?> mainClass, String packageName, Class<? extends Annotation>[] annotations) {
         String classpath = System.getProperty("java.class.path");
         if (!classpath.contains(";") && classpath.endsWith(".jar")) {
