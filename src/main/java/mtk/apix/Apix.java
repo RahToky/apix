@@ -339,7 +339,7 @@ public class Apix {
         System.out.println("       _       ____     _   __     __                              ");
         System.out.println("      / \\     |  _ \\   | |  \\ \\   / /                              ");
         System.out.println("     / _ \\    | |_) |  | |   \\ \\ / /       0 6 / 2 0 2 4           ");
-        System.out.println("    / ___ \\   |  _ /   | |   / / \\ \\       V E R S I O N . 2.0.0   ");
+        System.out.println("    / ___ \\   |  _ /   | |   / / \\ \\       V E R S I O N . 2.0.1   ");
         System.out.println("   /_/   \\_\\  |_|      |_|  /_/   \\_\\                              \n");
     }
 

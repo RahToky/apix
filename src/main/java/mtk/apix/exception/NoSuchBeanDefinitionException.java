@@ -9,4 +9,8 @@ public class NoSuchBeanDefinitionException extends RuntimeException {
         super("No qualifying bean of type '" + aClass + "' available");
     }
 
+    public NoSuchBeanDefinitionException(String message){
+        super(message);
+    }
+
 }

@@ -135,10 +135,10 @@ class ApixContainer {
                     field.setAccessible(true);
                     field.set(component, autowiredComponentField);
                 } catch (IllegalAccessException e) {
-                    throw new DependencyException(e);
+                    throw new RuntimeException(e);
                 }
             } else {
-                throw new DependencyException("Can't inject field '" + field.getType().getCanonicalName() + "' on '" + component.getClass().getCanonicalName() + "." + field.getName() + "' class. No instance found in container!");
+                throw new NoSuchBeanDefinitionException("Can't inject field '" + field.getType().getCanonicalName() + "' on '" + component.getClass().getCanonicalName() + "." + field.getName() + "' class cause: no qualifying bean");
             }
         }
     }
