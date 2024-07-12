@@ -166,7 +166,7 @@ public final class ClassUtil {
      */
     public static boolean contains(Parameter[] parameters, Class<?> aClass) {
         for (Parameter p : parameters) {
-            if (RoutingContext.class.isAssignableFrom((Class<?>) p.getParameterizedType())) {
+            if (p.getType().isAssignableFrom(aClass)) {
                 return true;
             }
         }
